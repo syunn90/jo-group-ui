@@ -10,7 +10,7 @@ const userApi = {
   SendSmsErr: '/account/sms_err',
   // get my info
   UserInfo: '/biz/user/info',
-  UserMenu: '/user/nav'
+  UserMenu: '/biz/menu/list'
 }
 
 /**
@@ -28,11 +28,6 @@ export function login (parameter) {
   return request({
     url: userApi.Login + '?code=' + parameter.code + '&grant_type=' + parameter.grant_type + '&randomStr=' + parameter.randomStr + '&username=' + parameter.username + '&password=' + parameter.password,
     method: 'post'
-    // data: parameter,
-    // headers: {
-    //   // 'Authorization': 'Basic Y2xpZW50OjEyMzQ=',
-    //   'Content-Type': 'application/x-www-form-urlencoded'
-    // }
   })
 }
 

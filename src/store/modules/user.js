@@ -1,13 +1,14 @@
 import storage from 'store'
 import expirePlugin from 'store/plugins/expire'
 import { login, getInfo, logout } from '@/api/login'
-import { ACCESS_TOKEN } from '@/store/mutation-types'
+import { ACCESS_TOKEN, REFRESH_TOKEN } from '@/store/mutation-types'
 import { welcome } from '@/utils/util'
 
 storage.addPlugin(expirePlugin)
 const user = {
   state: {
     token: '',
+    refresh_token: '',
     name: '',
     welcome: '',
     avatar: '',
@@ -18,6 +19,9 @@ const user = {
   mutations: {
     SET_TOKEN: (state, token) => {
       state.token = token
+    },
+    SET_REFRESH_TOKEN: (state, refreshToken) => {
+      state.refresh_token = refreshToken
     },
     SET_NAME: (state, { name, welcome }) => {
       state.name = name
@@ -42,7 +46,9 @@ const user = {
         login(userInfo).then(response => {
           const result = response
           storage.set(ACCESS_TOKEN, result.access_token, new Date().getTime() + 7 * 24 * 60 * 60 * 1000)
+          storage.set(REFRESH_TOKEN, result.refresh_token, new Date().getTime() + 30 * 24 * 60 * 60 * 1000)
           commit('SET_TOKEN', result.token)
+          commit('SET_REFRESH_TOKEN', result.refresh_token)
           resolve()
         }).catch(error => {
           reject(error)
@@ -53,19 +59,11 @@ const user = {
     // 获取用户信息
     GetInfo ({ commit }) {
       return new Promise((resolve, reject) => {
-        // 请求后端获取用户信息 /api/user/info
+        // 请求后端获取用户信息
         getInfo().then(response => {
           const result = response.data
           if (result.roles && result.roles.permissions.length > 0) {
             const role = { ...result.roles }
-            // role.permissions = role.permissions.map(permission => {
-            //   console.log(permission)
-            //   const per = {
-            //     ...permission,
-            //     actionList: (permission.actionEntitySet || {}).map(item => item.action)
-            //    }
-            //   return per
-            // })
             role.permissionList = role.permissions.map(permission => { return permission.permissionId })
             // 覆盖响应体的 role, 供下游使用
             result.role = role
@@ -92,6 +90,7 @@ const user = {
           commit('SET_TOKEN', '')
           commit('SET_ROLES', [])
           storage.remove(ACCESS_TOKEN)
+          storage.remove(REFRESH_TOKEN)
           resolve()
         }).catch((err) => {
           console.log('logout fail:', err)

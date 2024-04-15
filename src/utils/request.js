@@ -3,8 +3,9 @@ import store from '@/store'
 import storage from 'store'
 import notification from 'ant-design-vue/es/notification'
 import { VueAxios } from './axios'
-import { ACCESS_TOKEN } from '@/store/mutation-types'
-
+import { ACCESS_TOKEN, REFRESH_TOKEN } from '@/store/mutation-types'
+var retryRequests = []
+var isRefreshing = false
 // 创建 axios 实例
 const request = axios.create({
   // API 请求的默认前缀
@@ -15,25 +16,41 @@ const request = axios.create({
 // 异常拦截处理器
 const errorHandler = (error) => {
   if (error.response) {
-    const data = error.response.data
-    // 从 localstorage 获取 token
-    const token = storage.get(ACCESS_TOKEN)
-    if (error.response.status === 403) {
-      notification.error({
-        message: 'Forbidden',
-        description: data.message
-      })
-    }
-    if (error.response.status === 401 && !(data.result && data.result.isLogin)) {
-      notification.error({
-        message: 'Unauthorized',
-        description: 'Authorization verification failed'
-      })
-      if (token) {
-        store.dispatch('Logout').then(() => {
-          setTimeout(() => {
-            window.location.reload()
-          }, 1500)
+    if (error.response.status === 424) {
+      const config = error.response.config
+      if (!isRefreshing) {
+        isRefreshing = true
+        return getRefreshTokenFunc().then(res => {
+          storage.set(ACCESS_TOKEN, res.data.access_token, new Date().getTime() + 7 * 24 * 60 * 60 * 1000)
+          store.commit('SET_TOKEN', res.data.access_token)
+          config.headers['Authorization'] = `Bearer ${res.data.access_token}`
+          retryRequests.forEach((cb) => cb(res.data.access_token))
+          // 重试完清空这个队列
+          retryRequests = []
+          return request(config)
+        }).catch((e) => {
+          console.log(e)
+          storage.set(ACCESS_TOKEN, '', 7 * 24 * 60 * 60 * 1000)
+          store.commit('SET_TOKEN', '')
+          notification.error({
+            message: '错误',
+            description: '登录过期，请重新登录',
+            duration: 1.5
+            // onClose: () => {
+            //   window.location.reload()
+            // }
+          })
+        }).finally(() => {
+          isRefreshing = false
+        })
+      } else {
+        // 正在刷新token，返回一个未执行resolve的promise
+        return new Promise((resolve) => {
+          // 将resolve放进队列，用一个函数形式来保存，等token刷新后直接执行
+          retryRequests.push((token) => {
+            config.headers.Authorization = 'Bearer ' + token
+            resolve(request(config))
+          })
         })
       }
     }
@@ -57,6 +74,9 @@ request.interceptors.response.use((response) => {
   return response.data
 }, errorHandler)
 
+function getRefreshTokenFunc () {
+  return axios.post('/auth/oauth2/token?grant_type=refresh_token&refresh_token=' + storage.get(REFRESH_TOKEN))
+}
 const installer = {
   vm: {},
   install (Vue) {

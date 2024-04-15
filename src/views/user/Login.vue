@@ -13,7 +13,6 @@
         @change="handleTabClick"
       >
         <a-tab-pane key="tab1" :tab="$t('user.login.tab-login-credentials')">
-          <a-alert v-if="isLoginError" type="error" showIcon style="margin-bottom: 24px;" :message="$t('user.login.message-invalid-credentials')" />
           <a-form-item>
             <a-input
               size="large"
@@ -297,7 +296,7 @@ export default {
       this.isLoginError = true
       this.$notification['error']({
         message: '错误',
-        description: ((err.response || {}).data || {}).message || '请求出现错误，请稍后再试',
+        description: ((err.response || {}).data || {}).msg || '请求出现错误，请稍后再试',
         duration: 4
       })
     }

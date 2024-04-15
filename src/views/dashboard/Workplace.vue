@@ -137,7 +137,7 @@ import { mapState } from 'vuex'
 import { PageHeaderWrapper } from '@ant-design-vue/pro-layout'
 import { Radar } from '@/components'
 
-// import { getRoleList, getServiceList } from '@/api/manage'
+import { getInfo } from '@/api/login'
 
 // const DataSet = require('@antv/data-set')
 
@@ -207,7 +207,7 @@ export default {
     }),
     currentUser () {
       return {
-        name: 'Serati Ma',
+        name: 'Serati Ma1',
         avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png'
       }
     },
@@ -219,6 +219,9 @@ export default {
     this.user = this.userInfo
     this.avatar = this.userInfo.avatar
 
+    getInfo().then(res => {
+      console.log('res' + res)
+    })
     // getRoleList().then(res => {
     //   // console.log('workplace -> call getRoleList()', res)
     // })
